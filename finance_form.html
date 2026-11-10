@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Workshop2U | Business Status entry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1c2433;--mute:#667085;--line:#d9e0ea;--accent:#f26b21;--g:#2fb67c;--r:#e5484d}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;font:14px/1.5 'Inter',system-ui,sans-serif;color:var(--ink);background:#f3f6fa;padding:20px}
+.card{max-width:960px;margin:auto;background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px}
+.logo{font:600 18px 'JetBrains Mono',monospace;letter-spacing:.04em}.logo span{color:var(--accent)}
+h1{font:600 22px 'JetBrains Mono',monospace;margin:12px 0 2px}
+p{color:var(--mute);margin:0 0 18px}
+form{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+#loginForm{grid-template-columns:1fr;max-width:340px}
+label{display:grid;gap:4px;font-size:12px;color:var(--mute)}
+.full{grid-column:1/-1}
+input,select,textarea{font:inherit;color:var(--ink);padding:8px 10px;border:1px solid var(--line);border-radius:8px;min-width:0;background:#fff}
+:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+button{padding:10px 18px;border:0;border-radius:8px;background:var(--accent);color:#fff;font:600 14px inherit;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+a{color:#2f80c0}
+#msg,#err{margin-top:12px;font-weight:500;min-height:1.4em}
+#msg.ok{color:var(--g)}#msg.bad,#err{color:var(--r)}
+@media(max-width:800px){form{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){form{grid-template-columns:1fr}body{padding:10px}.card{padding:16px}}
+</style>
+</head>
+<body>
+<div class="card">
+  <b class="logo">WORKSHOP<span>2U</span></b>
+  <h1>Business Status entry</h1>
+
+  <section id="loginBox">
+    <p>Managers only. Sign in with your Workshop2U account.</p>
+    <form id="loginForm">
+      <label>Username<input id="u" autocomplete="username" required></label>
+      <label>Password<input id="p" type="password" autocomplete="current-password" required></label>
+      <div><button id="loginBtn">Sign in</button><div id="err" role="alert"></div></div>
+    </form>
+  </section>
+
+  <section id="entry" hidden>
+    <p>Signed in as <b id="who"></b> &middot; <a href="#" id="out">Sign out</a></p>
+    <form id="finForm"></form>
+    <div id="msg" role="status"></div>
+  </section>
+</div>
+<script src="config.js"></script>
+<script src="finform.js"></script>
+<script>
+let token = null;
+const call = async (action, extra) => {
+  if (CONFIG.API_URL.startsWith('PASTE')) throw new Error('API_URL is not set in config.js.');
+  const res = await fetch(CONFIG.API_URL, { method: 'POST', body: JSON.stringify({ action, token, ...extra }) });
+  const j = await res.json(); if (!j.ok) throw new Error(j.error); return j;
+};
+const $ = s => document.querySelector(s);
+const footer = '<button id="saveBtn">Submit to Finance sheet</button>';
+
+$('#loginForm').onsubmit = async e => {
+  e.preventDefault(); $('#err').textContent = ''; $('#loginBtn').disabled = true;
+  try {
+    const j = await call('login', { user: $('#u').value.trim(), pass: $('#p').value });
+    token = j.token;
+    if (!['manager', 'webmaster'].includes(j.role)) { await call('logout').catch(() => {}); token = null; throw new Error('Only Managers and Webmasters can submit finance data.'); }
+    $('#who').textContent = j.user + ' (' + j.role + ')'; $('#p').value = '';
+    buildFinForm($('#finForm'), footer);
+    $('#loginBox').hidden = true; $('#entry').hidden = false;
+  } catch (err) { $('#err').textContent = err.message; }
+  $('#loginBtn').disabled = false;
+};
+$('#out').onclick = async e => { e.preventDefault(); try { await call('logout'); } catch (x) {} token = null; $('#entry').hidden = true; $('#loginBox').hidden = false; $('#msg').textContent = ''; };
+$('#finForm').onsubmit = async e => {
+  e.preventDefault();
+  const b = $('#saveBtn'), m = $('#msg'); b.disabled = true; b.textContent = 'Submitting...'; m.className = ''; m.textContent = '';
+  try { await call('finAdd', { row: finPayload(e.target) }); m.className = 'ok'; m.textContent = 'Submitted. The Business Status dashboard and the Finance sheet are updated.'; e.target.reset(); }
+  catch (err) { m.className = 'bad'; m.textContent = 'Could not submit: ' + err.message; if (/expired/i.test(err.message)) { $('#entry').hidden = true; $('#loginBox').hidden = false; } }
+  b.disabled = false; b.textContent = 'Submit to Finance sheet';
+};
+</script>
+</body>
+</html>
