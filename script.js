@@ -242,15 +242,15 @@ const priceTxt = v => typeof v === 'number' ? v.toLocaleString('en-MY') : String
 const allPricesShown = () => { const w = rows.filter(r => r.raw[23]); return w.length > 0 && w.every(r => shownPrice.has(String(r.row))); };
 const COLS = [
   { h: 'No', w: 52, v: r => Number(r.no), t: r => `<td>${esc(r.no)}</td>` },
-  { h: 'Completion status', w: 105, cls: 'nar', v: r => r.st, t: r => `<td><span class="pill sm ${r.done ? 'g' : 'n'}">${r.st}</span></td>` },
+  { h: 'Completion status', w: 105, hc: true,  cls: 'nar', v: r => r.st, t: r => `<td><span class="pill sm ${r.done ? 'g' : 'n'}">${r.st}</span></td>` },
   { h: 'Vehicle', w: 96, v: r => r.veh, t: r => `<td><b>${esc(r.veh)}</b></td>` },
   { h: 'WS', w: 52, v: r => r.ws, t: r => `<td>${esc(r.ws)}</td>` },
   { h: 'Site', w: 62, v: r => r.site, t: r => `<td>${esc(r.site)}</td>` },
   { h: 'WO no', w: 110, v: r => r.wo, t: r => `<td>${esc(r.wo)}</td>` },
-  { h: 'Complaint date', w: 92, cls: 'nar', v: r => r.cdate, t: r => `<td>${esc(dmy(r.cdate))}</td>` },
-  { h: 'Entry date', w: 84, cls: 'nar', v: r => cell(r, 6), t: r => `<td>${esc(dmy(cell(r, 6)))}</td>` },
-  { h: 'Workorder ageing', w: 78, cls: 'nar', v: r => r.age, t: r => `<td>${pill(r.age)}</td>` },
-  { h: 'Workshop ageing', w: 78, cls: 'nar', v: r => r.wage, t: r => `<td>${pill(r.wage)}</td>` },
+  { h: 'Complaint date', w: 92, hc: true, cls: 'nar', v: r => r.cdate, t: r => `<td>${esc(dmy(r.cdate))}</td>` },
+  { h: 'Entry date', w: 84, hc: true, cls: 'nar', v: r => cell(r, 6), t: r => `<td>${esc(dmy(cell(r, 6)))}</td>` },
+  { h: 'Workorder ageing', w: 86, hc: true, cc: true, cls: 'nar', v: r => r.age, t: r => `<td>${pill(r.age)}</td>` },
+  { h: 'Workshop ageing', w: 78, hc: true, cc: true, cls: 'nar', v: r => r.wage, t: r => `<td>${pill(r.wage)}</td>` },
   { h: 'Loaner company', w: 80, cls: 'nar', v: r => cell(r, 9), t: r => `<td>${esc(cell(r, 9))}</td>` },                          // column J
   { h: 'Loaner quantity', w: 84, cls: 'nar', v: r => numOr(cell(r, 10)) ?? cell(r, 10), t: r => `<td>${esc(cell(r, 10))}</td>` },   // column K
   { h: 'Category', w: 130, v: r => r.cat, t: r => `<td>${esc(r.cat)}</td>` },
@@ -260,7 +260,7 @@ const COLS = [
   { h: 'Mechanic', w: 216, v: r => cell(r, 16), t: r => `<td>${esc(cell(r, 16))}</td>` },
   { h: 'Repair method', w: 130, v: r => cell(r, 17), t: r => `<td>${esc(cell(r, 17))}</td>` },   // column R
   { h: 'Panel workshop / supplier', w: 240, v: r => cell(r, 18), t: r => `<td>${esc(cell(r, 18))}</td>` },
-  { h: 'Price (RM)', w: 100, hdr: () => allPricesShown() ? '<button class="btn sm" data-hideall="1">Hide</button>' : '<button class="btn sm" data-showall="1">Show</button>', v: r => shownPrice.has(String(r.row)) ? numOr(shownPrice.get(String(r.row))) ?? String(shownPrice.get(String(r.row))) : '',
+  { h: 'Price (RM)', w: 100, hc: true, cc: true, hdr: () => allPricesShown() ? '<button class="btn sm" data-hideall="1">Hide</button>' : '<button class="btn sm" data-showall="1">Show</button>', v: r => shownPrice.has(String(r.row)) ? numOr(shownPrice.get(String(r.row))) ?? String(shownPrice.get(String(r.row))) : '',
     t: r => { const k = String(r.row); if (!r.raw[23]) return '<td></td>';   // the server only says whether a price exists; the value stays hidden until a Manager or Webmaster unlocks it
       return shownPrice.has(k) ? `<td>${esc(priceTxt(shownPrice.get(k)))}<br><button class="btn sm" data-hide="${k}">Hide</button></td>` : `<td><button class="btn sm" data-show="${k}">Show</button></td>`; } }
 ];
