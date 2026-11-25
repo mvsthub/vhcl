@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Workshop2U | Vehicle Status Monitoring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light")}catch(e){}</script>
+</head>
+<body>
+
+<section id="login">
+  <form id="loginForm" class="glass">
+    <b class="logo">WORKSHOP<span>2U</span></b>
+    <p>Track your vehicle's real-time status</p>
+    <label>Username<input id="u" autocomplete="username" required></label>
+    <label>Password<input id="p" type="password" autocomplete="current-password" required></label>
+    <button class="btn primary">Sign in</button>
+    <div class="err" id="loginErr" role="alert"></div>
+  </form>
+</section>
+
+<div id="app" hidden>
+  <header class="top">
+    <b class="logo">WORKSHOP<span>2U</span></b>
+    <nav>
+      <button data-tab="wom" class="on">Operations Monitoring</button>
+      <button data-tab="bo">Business Overview</button>
+      <button data-tab="users">Users</button>
+    </nav>
+    <div class="right">
+      <span id="who" class="clock"></span>
+      <span id="clock" class="clock"></span>
+      <button id="theme" class="btn" aria-label="Switch between light and dark mode"></button>
+      <button id="refresh" class="btn">Refresh</button>
+      <button id="logout" class="btn">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="subnav" class="subnav" hidden>
+      <button data-sub="bo-kpi">KPI Overview</button>
+      <button data-sub="wom">Operations Monitoring</button>
+      <button data-sub="bo-ded">Deduction Performance</button>
+      <button data-sub="bo-cfs">Customer Feedback Survey</button>
+      <button data-sub="bo-mkt">Marketing</button>
+      <button data-sub="bo-hr">Human Resource</button>
+      <button data-sub="bo-fin">Finance</button>
+      <button data-sub="bo-bud">Budget</button>
+    </div>
+
+    <!-- WORK ORDER OVERVIEW -->
+    <section id="tab-wom" class="tab">
+      <div class="head"><div><h1 class="title">Work Order Overview</h1>
+      <p class="sub">Open work orders across WR1, WR2 and WR3 &middot; <span id="asof"></span></p></div>
+        <div class="right"><button id="womLicBtn" class="btn primary">License and Certificate</button><button id="womListBtn" class="btn primary">Work Order List</button></div></div>
+
+      <div class="panel filters">
+        <label>Site <select id="fSite"></select></label>
+        <label>Workshop <select id="fWs"></select></label>
+        <label>Ageing Category <select id="fAgeBy"><option value="wo">Workorder Ageing</option><option value="ws">Workshop Ageing</option></select></label>
+        <label><span id="fAgeLbl">Workorder Ageing</span> <select id="fAge"><option value="">All Ageing</option><option value="0">Completed</option><option value="1">&lt; 7 days</option><option value="2">7 - 30 days</option><option value="3">&gt; 30 days</option></select></label>
+        <label>Category <select id="fCat"></select></label>
+        <button id="reset" class="btn">Reset</button>
+      </div>
+
+      <div id="kpis" class="kpis"></div>
+
+      <div class="grid">
+        <div class="panel"><h2>Vehicle ageing status</h2><div class="cv"><canvas id="cAge"></canvas></div></div>
+        <div class="panel"><h2>Vehicle quantity by site</h2><div class="cv"><canvas id="cSite"></canvas></div></div>
+        <div class="panel"><h2>Vehicle quantity by workshop</h2><div class="cv"><canvas id="cWs"></canvas></div></div>
+        <div class="panel">
+          <h2>Loaner provision <select id="loanBy"><option value="ws">By workshop</option><option value="site">By site</option></select></h2>
+          <div class="cv"><canvas id="cLoan"></canvas></div>
+        </div>
+        <div class="panel wide">
+          <h2>Work order category
+            <span class="pick"><select id="catScope"><option value="all">All</option><option value="ws">By workshop</option><option value="site">By site</option></select>
+            <select id="catItem" hidden></select></span>
+          </h2>
+          <div class="catbody"><div class="cv tall"><canvas id="cCat"></canvas></div><div id="catTable" class="tbl-wrap"></div></div>
+        </div>
+        <div class="panel wide">
+          <h2>Loaner company
+            <span class="pick"><select id="loanCoScope"><option value="all">All</option><option value="ws">By workshop</option><option value="site">By site</option></select>
+            <select id="loanCoItem" hidden></select></span>
+          </h2>
+          <div class="catbody"><div class="cv tall"><canvas id="cLoanCo"></canvas></div><div id="loanCoTable" class="tbl-wrap"></div></div>
+        </div>
+        <div class="panel wide">
+          <h2>Panel workshop / supplier
+            <span class="pick"><select id="supScope"><option value="all">All</option><option value="ws">By workshop</option><option value="site">By site</option></select>
+            <select id="supItem" hidden></select></span>
+          </h2>
+          <div class="catbody"><div class="cv tall"><canvas id="cSup"></canvas></div>
+            <div><div class="sub" style="margin:0 0 6px">Repair method share</div><div class="cv" style="height:200px"><canvas id="cRep"></canvas></div><div id="supTable" class="tbl-wrap" style="max-height:230px;margin-top:10px"></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORK ORDERS LIST -->
+    <section id="tab-list" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Work Orders</h1>
+      <p class="sub">Every open vehicle, colour-coded by ageing &middot; click a row to read its full progress</p></div>
+        <button id="listBack" class="btn">&larr; Back</button></div>
+      <div class="panel filters"><label>Search <input id="q" placeholder="Vehicle, WO no, complaint..."></label><span id="count" class="sub"></span><div style="margin-left:auto;display:flex;gap:8px"><button id="extractBtn" class="btn">Extract</button><button id="submitNew" class="btn primary" hidden>Submit new</button></div></div>
+      <div class="panel tbl-wrap"><table id="list"></table></div>
+    </section>
+
+    <!-- FORM -->
+    <dialog id="newDlg">
+      <h2 class="title" style="font-size:18px">Submit new work order</h2>
+      <p class="sub">Each submission adds a row to the Summary tab. Ageing and the &lt;30 / &gt;30 day columns are calculated for you.</p>
+      <form id="woForm" class="fgrid">
+        <label>Vehicle No *<input name="veh" required></label>
+        <label>Workshop *<select name="ws" required><option value="">Select</option><option>WR1</option><option>WR2</option><option>WR3</option></select></label>
+        <label>Site *<select name="site" required></select></label>
+        <label>Work Order No *<input name="wo" required></label>
+        <label>Complaint Date *<input name="cdate" type="date" required></label>
+        <label>Workshop Entry Date<input name="edate" type="date"></label>
+        <label>Loaner Company<input name="loanCo"></label>
+        <label>Loaner Quantity<input name="loan" type="number" min="0" value="0"></label>
+        <label>Category *<select name="cat" id="catSel" required></select></label>
+        <label class="full">Complaint *<textarea name="complaint" rows="2" required></textarea></label>
+        <label>PR No<input name="prNo"></label>
+        <label>PR Date<input name="prDate" type="date"></label>
+        <label class="full">Status<textarea name="status" rows="3" placeholder="e.g. 27/10/2026 - Waiting part from vendor"></textarea></label>
+        <label>Mechanic<input name="mech"></label>
+        <label>Repair Method<input name="repair" list="repairList"></label><datalist id="repairList"></datalist>
+        <label>Panel Workshop / Suppliers<input name="panel"></label>
+        <label>Panel Contact No<input name="panelTel" type="tel"></label>
+        <label>Report Title<input name="rTitle"></label>
+        <label>Report No<input name="rNo"></label>
+        <label>Report Submission Date<input name="rDate" type="date"></label>
+        <label>Price (RM)<input name="price" type="number" step="0.01" min="0"></label>
+        <label>Completion Status<select name="done"><option>In Progress</option><option>Completed</option></select></label>
+        <label>Completion Date<input name="doneDate" type="date"></label>
+        <div class="full"><button class="btn primary" id="saveBtn">Add to Summary sheet</button> <button type="button" class="btn" id="newCancel">Cancel</button></div>
+      </form>
+    </dialog>
+    <!-- LICENSE AND CERTIFICATE -->
+    <section id="tab-lic" class="tab" hidden>
+      <div class="head"><div><h1 class="title">License and Certificate</h1><p class="sub">Charts from the "License and Certificate" tab of the Google Sheet</p></div>
+        <div class="right"><button id="licInfoBtn" class="btn primary">Table Info</button><button id="licBack" class="btn">&larr; Back</button></div></div>
+      <div id="licCards" class="kpis kauto"></div><div id="licCharts" class="grid"></div>
+    </section>
+
+    <section id="tab-licT" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Table Info</h1><p class="sub">Data from the Google Sheet tab "License and Certificate"</p></div>
+        <div class="right"><button id="licNew" class="btn primary" hidden>Submit New</button><button id="licTBack" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-lic" placeholder="Search any column..."></label><span id="kn-lic" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-lic"></table></div>
+    </section>
+
+    <!-- KPI OVERVIEW -->
+    <section id="tab-bo-kpi" class="tab" hidden>
+      <div class="head"><div><h1 class="title">KPI Overview</h1><p class="sub">Key performance indicators and revenue streams &middot; <span id="kpiAsof"></span></p></div>
+        <div class="right"><button id="kpiTblBtn" class="btn primary">KPI Table</button><button id="kpiRevBtn" class="btn primary">KPI Revenue</button></div></div>
+      <h2 class="sec">KPI Table</h2>
+      <div id="kf-table" class="panel filters"></div><div id="kk-table" class="kpis kauto"></div><div id="kg-table" class="grid"></div>
+      <h2 class="sec">Revenue Stream</h2>
+      <div id="kf-revenue" class="panel filters"></div><div id="kk-revenue" class="kpis kauto"></div><div id="kg-revenue" class="grid"></div>
+    </section>
+
+    <section id="tab-bo-kpit" class="tab" hidden>
+      <div class="head"><div><h1 class="title">KPI Table</h1><p class="sub">Data from the Google Sheet tab "KPI Overview - KPI Table"</p></div>
+        <button id="kpitBack" class="btn">&larr; Back</button></div>
+      <div class="panel filters"><label>Search <input id="kq-table" placeholder="Search any column..."></label><span id="kn-table" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-table"></table></div>
+    </section>
+
+    <section id="tab-bo-kpir" class="tab" hidden>
+      <div class="head"><div><h1 class="title">KPI Revenue</h1><p class="sub">Data from the Google Sheet tab "KPI Overview - Revenue Stream"</p></div>
+        <button id="kpirBack" class="btn">&larr; Back</button></div>
+      <div class="panel filters"><label>Search <input id="kq-revenue" placeholder="Search any column..."></label><span id="kn-revenue" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-revenue"></table></div>
+    </section>
+
+    <section id="tab-bo-ded" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Deduction Performance</h1><p class="sub">Deduction summary and details by hospital &middot; <span id="dedAsof"></span></p></div>
+        <div class="right"><button id="dedSumBtn" class="btn primary">Summary</button><button id="dedHospBtn" class="btn primary">Details by Hospital</button></div></div>
+      <h2 class="sec">Summary</h2>
+      <div id="kf-dsum" class="panel filters"></div><div id="kk-dsum" class="kpis kauto"></div><div id="kg-dsum" class="grid"></div>
+      <h2 class="sec">Details by Hospital</h2>
+      <div id="kf-dhosp" class="panel filters"></div><div id="kk-dhosp" class="kpis kauto"></div><div id="kg-dhosp" class="grid"></div>
+    </section>
+
+    <section id="tab-bo-dedS" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Summary</h1><p class="sub">Data from the Google Sheet tab "Deduction Performance - Summary"</p></div>
+        <button id="dedSBack" class="btn">&larr; Back</button></div>
+      <div class="panel filters"><label>Search <input id="kq-dsum" placeholder="Search any column..."></label><span id="kn-dsum" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-dsum"></table></div>
+    </section>
+
+    <section id="tab-bo-dedH" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Details by Hospital</h1><p class="sub">Data from the Google Sheet tab "Deduction Performance-Hospital"</p></div>
+        <button id="dedHBack" class="btn">&larr; Back</button></div>
+      <h2 class="sec">Deduction (sheet rows 3 to 40)</h2>
+      <div class="panel filters"><label>Search <input id="kq-dded" placeholder="Search any column..."></label><span id="kn-dded" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-dded"></table></div>
+      <h2 class="sec">Revenue (sheet rows 46 to 83)</h2>
+      <div class="panel filters"><label>Search <input id="kq-drev" placeholder="Search any column..."></label><span id="kn-drev" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-drev"></table></div>
+    </section>
+
+    <section id="tab-bo-cfs" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Customer Feedback Survey</h1><p class="sub">Survey results and respondents &middot; <span id="cfsAsof"></span></p></div>
+        <div class="right"><button id="cfsSumBtn" class="btn primary">Summary</button><button id="cfsRespBtn" class="btn primary">Respondent List</button></div></div>
+      <h2 class="sec">Summary</h2>
+      <div id="kf-csum" class="panel filters"></div><div id="kk-csum" class="kpis kauto"></div><div id="kg-csum" class="grid"></div>
+      <h2 class="sec">Respondents</h2>
+      <div id="kf-cresp" class="panel filters"></div><div id="kk-cresp" class="kpis kauto"></div><div id="kg-cresp" class="grid"></div>
+    </section>
+
+    <section id="tab-bo-cfsS" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Summary</h1><p class="sub">Data from the Google Sheet tab "CFS Summary"</p></div>
+        <div class="right"><button id="cfsSNew" class="btn primary" hidden>Submit New</button><button id="cfsSBack" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-csum" placeholder="Search any column..."></label><span id="kn-csum" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-csum"></table></div>
+    </section>
+
+    <section id="tab-bo-cfsR" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Respondent List</h1><p class="sub">Data from the Google Sheet tab "Respondent List-GS"</p></div>
+        <div class="right"><button id="cfsRNew" class="btn primary" hidden>Submit New</button><button id="cfsRBack" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-cresp" placeholder="Search any column..."></label><span id="kn-cresp" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-cresp"></table></div>
+    </section>
+
+    <section id="tab-bo-mkt" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Marketing</h1><p class="sub">Campaigns and planned activities &middot; <span id="mktAsof"></span></p></div>
+        <div class="right"><button id="mktCampBtn" class="btn primary">Campaign</button><button id="mktPlanBtn" class="btn primary">Planner</button></div></div>
+      <h2 class="sec">Campaign</h2>
+      <div id="kf-mcamp" class="panel filters"></div><div id="kk-mcamp" class="kpis kauto"></div><div id="kg-mcamp" class="grid"></div>
+      <h2 class="sec">Planner</h2>
+      <div id="kf-mplan" class="panel filters"></div><div id="kk-mplan" class="kpis kauto"></div><div id="kg-mplan" class="grid"></div>
+    </section>
+
+    <section id="tab-bo-mktC" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Campaign</h1><p class="sub">Data from the Google Sheet tab "Marketing Campaign"</p></div>
+        <div class="right"><button id="mktCNew" class="btn primary" hidden>Submit New</button><button id="mktCBack" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-mcamp" placeholder="Search any column..."></label><span id="kn-mcamp" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-mcamp"></table></div>
+    </section>
+
+    <section id="tab-bo-mktP" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Planner</h1><p class="sub">Data from the Google Sheet tab "Marketing Planner"</p></div>
+        <div class="right"><button id="mktPNew" class="btn primary" hidden>Submit New</button><button id="mktPBack" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-mplan" placeholder="Search any column..."></label><span id="kn-mplan" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-mplan"></table></div>
+    </section>
+
+    <section id="tab-bo-hr" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Human Resource</h1><p class="sub">Manpower status, turnover and training &middot; <span id="hrAsof"></span></p></div>
+        <div class="right"><button id="hrStBtn" class="btn primary">Status</button><button id="hrToBtn" class="btn primary">Turnover</button><button id="hrTrBtn" class="btn primary">Training</button></div></div>
+      <h2 class="sec">Manpower Status</h2>
+      <div id="kf-hstat" class="panel filters"></div><div id="kk-hstat" class="kpis kauto"></div><div id="kg-hstat" class="grid"></div>
+      <h2 class="sec">Manpower Turnover</h2>
+      <div id="kf-hturn" class="panel filters"></div><div id="kk-hturn" class="kpis kauto"></div><div id="kg-hturn" class="grid"></div>
+      <h2 class="sec">Training</h2>
+      <div id="kf-htrain" class="panel filters"></div><div id="kk-htrain" class="kpis kauto"></div><div id="kg-htrain" class="grid"></div>
+    </section>
+
+    <section id="tab-bo-hrst" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Status</h1><p class="sub">Data from the Google Sheet tab "Manpower Status"</p></div>
+        <div class="right"><button id="hrStNew" class="btn primary" hidden>Submit New</button><button id="hrStBack" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-hstat" placeholder="Search any column..."></label><span id="kn-hstat" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-hstat"></table></div>
+    </section>
+
+    <section id="tab-bo-hrto" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Turnover</h1><p class="sub">Data from the Google Sheet tab "Manpower Turnover"</p></div>
+        <div class="right"><button id="hrToNew" class="btn primary" hidden>Submit New</button><button id="hrToBack" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-hturn" placeholder="Search any column..."></label><span id="kn-hturn" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-hturn"></table></div>
+    </section>
+
+    <section id="tab-bo-hrtr" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Training</h1><p class="sub">Data from the Google Sheet tab "Training"</p></div>
+        <div class="right"><button id="hrTrNew" class="btn primary" hidden>Submit New</button><button id="hrTrBack" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-htrain" placeholder="Search any column..."></label><span id="kn-htrain" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-htrain"></table></div>
+    </section>
+
+    <section id="tab-bo-fin" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Finance</h1><p class="sub">Profit and loss overview &middot; <span id="finAsof"></span></p></div>
+        <div class="right" style="flex-wrap:wrap;justify-content:flex-end"><button id="finBtn_fov" class="btn primary">Overview</button><button id="finBtn_fpt" class="btn primary">Project Type</button><button id="finBtn_fsv" class="btn primary">Total by Services</button><button id="finBtn_fw1" class="btn primary">WR1</button><button id="finBtn_fw2" class="btn primary">WR2</button><button id="finBtn_fw3" class="btn primary">WR3</button><button id="finBtn_fhq" class="btn primary">HQ</button><button id="finBtn_fbs" class="btn primary">Balance Sheet</button><button id="finBtn_fcf" class="btn primary">Cashflow</button><button id="finBtn_ftr" class="btn primary">Trade</button></div></div>
+      <div id="kf-fov" class="panel filters"></div><div id="kk-fov" class="kpis kauto"></div><div id="kg-fov" class="grid"></div>
+    </section>
+
+    <section id="tab-bo-finov" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Overview</h1><p class="sub">Data from the Google Sheet tab "P&L Overview"</p></div>
+        <div class="right"><button id="finNew_fov" class="btn primary admin-only" hidden>Submit New</button><button id="finBack_fov" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-fov" placeholder="Search any column..."></label><span id="kn-fov" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-fov"></table></div>
+    </section>
+
+    <section id="tab-bo-finpt" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Project Type</h1><p class="sub">Data from the Google Sheet tab "P&L - Project Type"</p></div>
+        <div class="right"><button id="finNew_fpt" class="btn primary admin-only" hidden>Submit New</button><button id="finBack_fpt" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-fpt" placeholder="Search any column..."></label><span id="kn-fpt" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-fpt"></table></div>
+    </section>
+
+    <section id="tab-bo-finsv" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Total by Services</h1><p class="sub">Data from the Google Sheet tab "P&L - Total Company by Service"</p></div>
+        <div class="right"><button id="finNew_fsv" class="btn primary admin-only" hidden>Submit New</button><button id="finBack_fsv" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-fsv" placeholder="Search any column..."></label><span id="kn-fsv" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-fsv"></table></div>
+    </section>
+
+    <section id="tab-bo-finw1" class="tab" hidden>
+      <div class="head"><div><h1 class="title">WR1</h1><p class="sub">Data from the Google Sheet tab "P&L - WR1"</p></div>
+        <div class="right"><button id="finNew_fw1" class="btn primary admin-only" hidden>Submit New</button><button id="finBack_fw1" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-fw1" placeholder="Search any column..."></label><span id="kn-fw1" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-fw1"></table></div>
+    </section>
+
+    <section id="tab-bo-finw2" class="tab" hidden>
+      <div class="head"><div><h1 class="title">WR2</h1><p class="sub">Data from the Google Sheet tab "P&L - WR2"</p></div>
+        <div class="right"><button id="finNew_fw2" class="btn primary admin-only" hidden>Submit New</button><button id="finBack_fw2" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-fw2" placeholder="Search any column..."></label><span id="kn-fw2" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-fw2"></table></div>
+    </section>
+
+    <section id="tab-bo-finw3" class="tab" hidden>
+      <div class="head"><div><h1 class="title">WR3</h1><p class="sub">Data from the Google Sheet tab "P&L - WR3"</p></div>
+        <div class="right"><button id="finNew_fw3" class="btn primary admin-only" hidden>Submit New</button><button id="finBack_fw3" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-fw3" placeholder="Search any column..."></label><span id="kn-fw3" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-fw3"></table></div>
+    </section>
+
+    <section id="tab-bo-finhq" class="tab" hidden>
+      <div class="head"><div><h1 class="title">HQ</h1><p class="sub">Data from the Google Sheet tab "HQ"</p></div>
+        <div class="right"><button id="finNew_fhq" class="btn primary admin-only" hidden>Submit New</button><button id="finBack_fhq" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-fhq" placeholder="Search any column..."></label><span id="kn-fhq" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-fhq"></table></div>
+    </section>
+
+    <section id="tab-bo-finbs" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Balance Sheet</h1><p class="sub">Data from the Google Sheet tab "Balance Sheet"</p></div>
+        <div class="right"><button id="finNew_fbs" class="btn primary admin-only" hidden>Submit New</button><button id="finBack_fbs" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-fbs" placeholder="Search any column..."></label><span id="kn-fbs" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-fbs"></table></div>
+    </section>
+
+    <section id="tab-bo-fincf" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Cashflow</h1><p class="sub">Data from the Google Sheet tab "Cashflow"</p></div>
+        <div class="right"><button id="finNew_fcf" class="btn primary admin-only" hidden>Submit New</button><button id="finBack_fcf" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-fcf" placeholder="Search any column..."></label><span id="kn-fcf" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-fcf"></table></div>
+    </section>
+
+    <section id="tab-bo-fintr" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Trade</h1><p class="sub">Data from the Google Sheet tab "Trade Receivable and Payable"</p></div>
+        <div class="right"><button id="finNew_ftr" class="btn primary admin-only" hidden>Submit New</button><button id="finBack_ftr" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-ftr" placeholder="Search any column..."></label><span id="kn-ftr" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-ftr"></table></div>
+    </section>
+
+    <section id="tab-bo-bud" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Budget</h1><p class="sub">Budget summary &middot; <span id="budAsof"></span></p></div>
+        <div class="right"><button id="budNew" class="btn primary admin-only" hidden>Submit New</button><button id="budInfoBtn" class="btn primary">Table Info</button></div></div>
+      <div id="kf-bud" class="panel filters"></div><div id="kk-bud" class="kpis kauto"></div><div id="kg-bud" class="grid"></div>
+    </section>
+
+    <section id="tab-bo-budT" class="tab" hidden>
+      <div class="head"><div><h1 class="title">Table Info</h1><p class="sub">Data from the Google Sheet tab "Budget"</p></div>
+        <div class="right"><button id="budNewT" class="btn primary admin-only" hidden>Submit New</button><button id="budBack" class="btn">&larr; Back</button></div></div>
+      <div class="panel filters"><label>Search <input id="kq-bud" placeholder="Search any column..."></label><span id="kn-bud" class="sub"></span></div>
+      <div class="panel tbl-wrap"><table id="kd-bud"></table></div>
+    </section>
+
+    <!-- USERS -->
+    <section id="tab-users" class="tab" hidden>
+      <h1 class="title">Users</h1>
+      <p class="sub">Create accounts and manage who can sign in</p>
+      <form id="userForm" class="panel fgrid">
+        <label>Username *<input name="username" required pattern="[A-Za-z0-9._\-]{3,30}" title="3-30 letters, numbers, . _ -"></label>
+        <label>Email *<input name="email" type="email" required></label>
+        <label>Password * (min 8 characters)<input name="password" type="password" minlength="8" required autocomplete="new-password"></label>
+        <label>Role *<select name="role" id="roleSel" required></select></label>
+        <div class="full"><button class="btn primary">Add user</button></div>
+      </form>
+      <div class="panel tbl-wrap" style="margin-top:14px"><table id="userList"></table></div>
+    </section>
+  </main>
+  <dialog id="editDlg"><h2 class="title" style="font-size:18px">Edit work order</h2><form id="editForm" class="fgrid"></form></dialog>
+  <dialog id="extractDlg" style="width:min(380px,94vw)"><h2 class="title" style="font-size:18px">Extract Work Orders</h2>
+    <form id="extractForm" class="fgrid" style="grid-template-columns:1fr">
+      <label>Format <select name="fmt"><option value="csv">CSV (.csv)</option><option value="xlsx">Excel (.xlsx)</option></select></label>
+      <label style="display:flex;flex-direction:row;gap:8px;align-items:center"><input type="checkbox" name="shown"> Only the rows shown now (search applied)</label>
+      <p class="sub" id="extractNote"></p>
+      <div><button class="btn primary">Download</button> <button type="button" class="btn" id="extractCancel">Cancel</button></div>
+    </form></dialog>
+  <dialog id="priceDlg" style="width:min(380px,94vw)"><h2 class="title" style="font-size:18px">Manager login</h2>
+    <p class="sub" id="priceMsg">Only a Manager or Webmaster account can show this price.</p>
+    <form id="priceForm" class="fgrid" style="grid-template-columns:1fr">
+      <label>Username<input name="user" required autocomplete="off"></label>
+      <label>Password<input name="pass" type="password" required autocomplete="new-password"></label>
+      <div class="err" id="priceErr" role="alert" style="color:var(--r);min-height:1.2em"></div>
+      <div><button class="btn primary" id="priceGo">Show price</button> <button type="button" class="btn" id="priceCancel">Cancel</button></div>
+    </form></dialog>
+  <dialog id="kpiDlg"><h2 id="kpiDlgTitle" class="title" style="font-size:18px">Edit row</h2><form id="kpiForm" class="fgrid"></form></dialog>
+  <div id="toast" role="status"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="script.js"></script>
+<script src="kpi.js"></script>
+<script src="deduction.js"></script>
+<script src="cfs.js"></script>
+<script src="marketing.js"></script>
+<script src="hr.js"></script>
+<script src="fin.js"></script>
+</body>
+</html>
