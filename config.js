@@ -1,7 +1,7 @@
 /* Edit this file once. You never need to touch it when script.js or index.html are updated. */
 const CONFIG = {
   // Your Google Apps Script web app URL (Deploy > Manage deployments). It must end in /exec
-  API_URL: 'https://script.google.com/macros/s/AKfycbzB_v73RZINNzERm1o1VHbpkpY2N5bxNJZDijE2vsd5nu5NzxoR46S0-oqBgIb-9VF9/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbyBMnMO5169J6dGm69plfUMW-Eb8Ur98iJ7t5n4NyWFfaHfTEOlklygAd7KA2GswPHm/exec',
 
   // How often (seconds) the website checks the sheet for changes
   POLL_SEC: 10,
